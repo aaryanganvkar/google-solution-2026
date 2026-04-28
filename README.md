@@ -103,8 +103,8 @@ graph TB
 ## Architecture & Optimization
 
 Designed for stability and seamless cloud deployment:
-- **Direct Database Storage**: Removed AWS S3 dependencies by storing documents as Large Binary objects directly in PostgreSQL. This simplifies the architecture, improves local testability, and cuts costs.
-- **Graceful Degradation**: If the HuggingFace API is unavailable or rate limits are reached, the system intelligently falls back to robust Regex/Rule-Based extraction algorithms.
+- **Direct Database Storage**: Storing documents as Large Binary objects directly in PostgreSQL. This simplifies the architecture, improves local testability, and cuts costs.
+- **Graceful Degradation**: When the HuggingFace API is unavailable or rate limits are reached, the system intelligently falls back to robust Regex/Rule-Based extraction algorithms.
 - **Container Optimized**: Uses `python:3.11-slim` and the pure-Python `pg8000` Postgres driver to avoid heavy C-extension build requirements, ensuring lightning-fast container builds and deployments on Cloud Run.
 
 ---
