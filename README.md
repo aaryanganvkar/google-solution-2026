@@ -1,4 +1,4 @@
-# InfraDoc AI - Intelligent Document Management System
+# DocIntel AI - Intelligent Document Management System
 
 A modern document management system that automatically categorizes, summarizes, and extracts key insights from uploaded documents using AI (HuggingFace/Gemma). Designed for enterprise environments with department-level access control.
 
