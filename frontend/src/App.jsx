@@ -113,47 +113,39 @@ function App() {
     </>
   );
 
-  // Simple Welcome Component for /dashboard route
   const WelcomeDashboard = () => {
+    const quickLinks = [
+      { icon: 'group', label: 'Department Dashboard', desc: 'Access department-specific documents and insights', href: '/department-dashboard', btnLabel: 'Open Dashboard' },
+      { icon: 'description', label: 'Document Library', desc: 'Browse and search all available documents', href: '/library', btnLabel: 'Browse Library' },
+      { icon: 'psychology', label: 'AI Insights', desc: 'View AI-generated insights from your documents', href: '/insights', btnLabel: 'View Insights' },
+      { icon: 'menu_book', label: 'Knowledge Base', desc: 'Explore the central knowledge repository', href: '/knowledge', btnLabel: 'Explore Knowledge' },
+    ];
+
     return (
-      <div className="dashboard-overview">
-        <div className="welcome-section">
-          <h2>Welcome back, {userProfile?.name || 'User'}! 👋</h2>
-          <p className="welcome-subtitle">
-            Your centralized document management system
-          </p>
+      <div className="flex-1 overflow-y-auto p-8">
+        <div className="mb-8">
+          <h1 className="text-h1 font-h1 text-on-surface">Welcome back, {userProfile?.name || 'User'}!</h1>
+          <p className="text-body-md text-on-surface-variant mt-0.5">Your centralized document management system</p>
         </div>
-        
-        <div className="dashboard-redirect">
-          <h3>Quick Access</h3>
-          <div className="redirect-cards">
-            <div className="redirect-card" onClick={() => window.location.href = '/department-dashboard'}>
-              <div className="card-icon">
-                <Users size={32} /> {/* You'll need to import Users icon */}
+
+        <p className="text-[13px] font-semibold uppercase tracking-wider text-on-surface-variant mb-3">Quick Access</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-lg">
+          {quickLinks.map(link => (
+            <div key={link.href} className="bg-surface-container-lowest rounded-xl border border-outline-variant p-lg flex flex-col hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center mb-3">
+                <span className="material-symbols-outlined text-[22px] text-primary">{link.icon}</span>
               </div>
-              <h4>Department Dashboard</h4>
-              <p>Access department-specific documents and insights</p>
-              <button className="redirect-btn">Go to Department View</button>
+              <h3 className="text-h3 font-h3 text-on-surface mb-1">{link.label}</h3>
+              <p className="text-body-sm text-on-surface-variant flex-1 mb-4">{link.desc}</p>
+              <button
+                onClick={() => window.location.href = link.href}
+                className="flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
+                {link.btnLabel}
+              </button>
             </div>
-            
-            <div className="redirect-card" onClick={() => window.location.href = '/library'}>
-              <div className="card-icon">
-                <FileText size={32} /> {/* You'll need to import FileText icon */}
-              </div>
-              <h4>Document Library</h4>
-              <p>Browse all available documents</p>
-              <button className="redirect-btn">Go to Library</button>
-            </div>
-            
-            <div className="redirect-card" onClick={() => window.location.href = '/insights'}>
-              <div className="card-icon">
-                <Brain size={32} /> {/* You'll need to import Brain icon */}
-              </div>
-              <h4>AI Insights</h4>
-              <p>View AI-generated insights from documents</p>
-              <button className="redirect-btn">View Insights</button>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     );

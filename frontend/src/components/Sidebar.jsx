@@ -1,115 +1,87 @@
-// components/Sidebar.jsx
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { FileText, BarChart3, Home, Database, Bell, Settings, User, LogOut } from 'lucide-react';
-import './Sidebar.css';
 
 const Sidebar = ({ onLogout, userProfile }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  
-  const menuItems = [
-    { id: 'dashboard', path: '/dashboard', icon: Home, label: 'Dashboard' },
-    { id: 'library', path: '/library', icon: FileText, label: 'My Documents', badge: 4 },
-    { id: 'insights', path: '/insights', icon: BarChart3, label: 'AI Insights', badge: 12 },
-    { id: 'knowledge', path: '/knowledge', icon: Database, label: 'Knowledge Base' },
-  ];
 
-  const secondaryItems = [
-    { id: 'notifications', path: '/notifications', icon: Bell, label: 'Notifications', badge: 3 },
-    { id: 'settings', path: '/settings', icon: Settings, label: 'Settings' },
+  const menuItems = [
+    { id: 'dashboard', path: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { id: 'department-dashboard', path: '/department-dashboard', icon: 'folder_shared', label: 'My Documents' },
+    { id: 'library', path: '/library', icon: 'description', label: 'Document Library' },
+    { id: 'insights', path: '/insights', icon: 'monitoring', label: 'AI Insights' },
+    { id: 'knowledge', path: '/knowledge', icon: 'database', label: 'Knowledge Base' },
   ];
 
   const handleLogout = () => {
-    console.log('Logging out...');
-    
-    // Clear any user data from localStorage/sessionStorage
     localStorage.removeItem('userToken');
-    sessionStorage.removeItem('userSession');
-    
-    // Clear any app-specific data
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userData');
     localStorage.removeItem('appState');
-    
-    // Redirect to login page
-    navigate('/login');
-    
-    // If you want to fully reload the app:
-    // window.location.href = '/login';
+    if (onLogout) onLogout();
+    else navigate('/login');
   };
 
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  const isActive = (path) => location.pathname === path;
+
+  const initials = userProfile?.name
+    ? userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : (userProfile?.username || 'U').slice(0, 2).toUpperCase();
 
   return (
-    <div className="sidebar">
-      <div className="sidebar-logo">
-        <h2>InfraDoc AI</h2>
-        <p>Document Intelligence</p>
-      </div>
-
-      <div className="sidebar-section">
-        <h3 className="section-title">MAIN</h3>
-        <ul className="sidebar-nav">
-          {menuItems.map((item) => (
-            <li key={item.id}>
-              <Link 
-                to={item.path} 
-                className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
-              >
-                <span className="nav-icon">
-                  <item.icon size={20} />
-                </span>
-                <span className="nav-label">{item.label}</span>
-                {item.badge && <span className="nav-badge">{item.badge}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="sidebar-section">
-        <h3 className="section-title">PREFERENCES</h3>
-        <ul className="sidebar-nav">
-          {secondaryItems.map((item) => (
-            <li key={item.id}>
-              <Link 
-                to={item.path} 
-                className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
-              >
-                <span className="nav-icon">
-                  <item.icon size={20} />
-                </span>
-                <span className="nav-label">{item.label}</span>
-                {item.badge && <span className="nav-badge">{item.badge}</span>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="sidebar-footer">
-        <div className="user-profile">
-          <div className="user-avatar">
-            <User size={18} />
-          </div>
-          <div className="user-info">
-            <span className="user-name">John Doe</span>
-            <span className="user-status">Infrastructure Manager</span>
-          </div>
+    <aside className="fixed left-0 top-0 h-full w-[240px] border-r border-slate-200 bg-slate-50 flex flex-col p-4 z-50">
+      {/* Logo */}
+      <div className="mb-8 px-2 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center flex-shrink-0">
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
         </div>
-        <button className="logout-btn" onClick={onLogout || handleLogout}>
-          <LogOut size={16} style={{ marginRight: '8px' }} />
-          Logout
+        <div>
+          <h1 className="text-base font-bold tracking-tight text-slate-900 leading-tight">DocIntel AI</h1>
+          <p className="text-slate-500 text-xs">Document Intelligence</p>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 space-y-1">
+        {menuItems.map((item) => (
+          <Link
+            key={item.id}
+            to={item.path}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 active:scale-[0.98] text-sm ${
+              isActive(item.path)
+                ? 'bg-[#6C5DD3]/10 text-[#6C5DD3] font-semibold'
+                : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <span
+              className="material-symbols-outlined text-[20px]"
+              style={isActive(item.path) ? { fontVariationSettings: "'FILL' 1" } : {}}
+            >
+              {item.icon}
+            </span>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="mt-auto pt-4 border-t border-slate-200 flex items-center gap-3 px-2">
+        <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-xs font-semibold flex-shrink-0">
+          {initials}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-on-surface truncate">{userProfile?.name || userProfile?.username || 'User'}</p>
+          <p className="text-xs text-on-surface-variant truncate">{userProfile?.role || 'User'}</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="text-slate-400 hover:text-error transition-colors flex-shrink-0"
+          title="Logout"
+        >
+          <span className="material-symbols-outlined text-[20px]">logout</span>
         </button>
-        
-        
-        <div className="user-info">
-          <span className="user-name">{userProfile?.name || 'John Doe'}</span>
-          <span className="user-status">{userProfile?.role || 'Infrastructure Manager'}</span>
-        </div>
       </div>
-    </div>
+    </aside>
   );
 };
 

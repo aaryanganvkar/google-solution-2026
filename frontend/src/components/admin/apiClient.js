@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:5002') + '/api',
   withCredentials: true, // IMPORTANT: Send cookies with requests
   timeout: 60000, // 60 second timeout
 });

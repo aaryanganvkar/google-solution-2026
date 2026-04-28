@@ -36,7 +36,7 @@ except Exception:
 
 # ── HuggingFace LLM ─────────────────────────────────────────────────────────
 HF_TOKEN   = os.getenv('HF_TOKEN') or os.getenv('HUGGING_FACE_TOKEN', '')
-MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"   # free-tier serverless chat model
+MODEL_NAME = "google/gemma-4-31B-it:novita"   # free-tier serverless chat model
 
 try:
     from huggingface_hub import InferenceClient

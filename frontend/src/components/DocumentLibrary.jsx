@@ -1,23 +1,4 @@
-// components/DocumentLibrary.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Download, 
-  Eye, 
-  Share2, 
-  Calendar, 
-  User, 
-  Tag, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock,
-  Search,
-  Loader,
-  Filter,
-  ChevronDown,
-  Trash2,
-  X
-} from 'lucide-react';
 
 const DocumentLibrary = ({ user }) => {
   const [filter, setFilter] = useState('all');
@@ -32,55 +13,28 @@ const DocumentLibrary = ({ user }) => {
   useEffect(() => {
     fetchDocuments();
   }, [selectedDepartment, selectedType]);
-  // Note: search is triggered on Enter / button click
 
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      
       const token = localStorage.getItem('userToken');
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-      
-      let headers = {
-        'Content-Type': 'application/json'
-      };
-      
-      // Add authentication — prefer real JWT Bearer token
+      let headers = { 'Content-Type': 'application/json' };
       if (token && token !== 'null' && token !== 'authenticated') {
         headers['Authorization'] = `Bearer ${token}`;
       } else if (userData.username && userData.password) {
-        // Fallback: encode credentials for Basic-style passing via JSON body
-        // (the backend also checks JSON body credentials)
-        // We still pass them via the Authorization header as Basic for simplicity
         const authString = btoa(`${userData.username}:${userData.password}`);
         headers['Authorization'] = `Basic ${authString}`;
       }
-      
-      const endpoint = 'http://localhost:5000/api/documents';
-
-      // Add query parameters for filtering
+      const endpoint = (process.env.REACT_APP_API_URL || 'http://localhost:5002') + '/api/documents';
       const params = new URLSearchParams();
-      if (selectedDepartment !== 'all') {
-        params.append('department', selectedDepartment);
-      }
-      if (selectedType !== 'all') {
-        params.append('category', selectedType);
-      }
-      if (searchQuery) {
-        params.append('search', searchQuery);
-      }
-      
+      if (selectedDepartment !== 'all') params.append('department', selectedDepartment);
+      if (selectedType !== 'all') params.append('category', selectedType);
+      if (searchQuery) params.append('search', searchQuery);
       const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: headers
-      });
-      
+      const response = await fetch(url, { method: 'GET', headers });
       if (response.ok) {
         const data = await response.json();
-        
-        // Format the documents for display
         const formattedDocs = data.map(doc => ({
           id: doc.id,
           name: doc.title || doc.filename || 'Untitled Document',
@@ -89,11 +43,9 @@ const DocumentLibrary = ({ user }) => {
           size: doc.file_size ? `${(doc.file_size / 1024 / 1024).toFixed(2)} MB` : 'Unknown',
           uploadedAt: doc.created_at || doc.uploaded_date || new Date().toISOString(),
           uploadedBy: doc.uploader_name || 'System',
-          status: 'processed', // Assuming all fetched documents are processed
+          status: 'processed',
           summary: doc.description || 'No description available',
-          insights: doc.insights || [
-            { type: 'info', text: 'Document stored in system', priority: 'low' }
-          ],
+          insights: doc.insights || [{ type: 'info', text: 'Document stored in system', priority: 'low' }],
           processingTime: 'processed',
           tags: doc.tags ? doc.tags.split(',').map(tag => tag.trim()) : [],
           aiScore: 85,
@@ -101,16 +53,12 @@ const DocumentLibrary = ({ user }) => {
           department: doc.department,
           download_url: doc.download_url
         }));
-        
         setDocuments(formattedDocs);
       } else {
-        console.error('Failed to fetch documents:', response.status);
-        // Fallback to mock data or show empty state
         setDocuments([]);
       }
     } catch (error) {
       console.error('Error fetching documents:', error);
-      // Fallback to API endpoint for department documents
       fetchDepartmentDocuments();
     } finally {
       setLoading(false);
@@ -121,21 +69,14 @@ const DocumentLibrary = ({ user }) => {
     try {
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
       const department = userData.department || 'engineering';
-      
-      const endpoint = `http://localhost:5000/api/processing/department-documents/${department}`;
+      const endpoint = `${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/processing/department-documents/${department}`;
       const authString = btoa(`${userData.username}:${userData.password}`);
-      
       const response = await fetch(endpoint, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${authString}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${authString}` }
       });
-      
       if (response.ok) {
         const data = await response.json();
-        
         const formattedDocs = data.map(doc => ({
           id: doc.id || Math.random().toString(36).substr(2, 9),
           name: doc.original_filename || 'Document',
@@ -146,11 +87,7 @@ const DocumentLibrary = ({ user }) => {
           uploadedBy: doc.uploaded_by || 'System',
           status: doc.status || 'processed',
           summary: doc.summary || 'No summary available',
-          insights: doc.key_points ? doc.key_points.map(point => ({
-            type: 'key_point',
-            text: point,
-            priority: doc.priority || 'medium'
-          })) : [],
+          insights: doc.key_points ? doc.key_points.map(point => ({ type: 'key_point', text: point, priority: doc.priority || 'medium' })) : [],
           processingTime: 'processed',
           tags: doc.tags || [doc.document_type],
           aiScore: 90,
@@ -159,7 +96,6 @@ const DocumentLibrary = ({ user }) => {
           download_url: doc.s3_url,
           s3_key: doc.s3_key
         }));
-        
         setDocuments(formattedDocs);
       }
     } catch (error) {
@@ -167,7 +103,6 @@ const DocumentLibrary = ({ user }) => {
     }
   };
 
-  // Extract unique departments and types for filters
   const departments = ['all', ...new Set(documents.map(doc => doc.department).filter(Boolean))];
   const documentTypes = ['all', ...new Set(documents.map(doc => doc.type).filter(Boolean))];
 
@@ -175,17 +110,13 @@ const DocumentLibrary = ({ user }) => {
     .filter(doc => {
       if (filter === 'all') return true;
       if (filter === 'processed') return doc.status === 'processed';
-      if (filter === 'high') {
-        return doc.insights?.some(i => i.priority === 'high') || 
-               doc.priority === 'high';
-      }
+      if (filter === 'high') return doc.insights?.some(i => i.priority === 'high') || doc.priority === 'high';
       return true;
     })
     .filter(doc => {
       if (selectedDepartment !== 'all' && doc.department !== selectedDepartment) return false;
       if (selectedType !== 'all' && doc.type !== selectedType) return false;
       if (!searchQuery) return true;
-      
       const query = searchQuery.toLowerCase();
       return (
         doc.name.toLowerCase().includes(query) ||
@@ -196,100 +127,52 @@ const DocumentLibrary = ({ user }) => {
     })
     .sort((a, b) => {
       switch (sortBy) {
-        case 'newest':
-          return new Date(b.uploadedAt) - new Date(a.uploadedAt);
-        case 'oldest':
-          return new Date(a.uploadedAt) - new Date(b.uploadedAt);
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'size':
-          return (parseFloat(b.size) || 0) - (parseFloat(a.size) || 0);
-        default:
-          return 0;
+        case 'newest': return new Date(b.uploadedAt) - new Date(a.uploadedAt);
+        case 'oldest': return new Date(a.uploadedAt) - new Date(b.uploadedAt);
+        case 'name': return a.name.localeCompare(b.name);
+        case 'size': return (parseFloat(b.size) || 0) - (parseFloat(a.size) || 0);
+        default: return 0;
       }
     });
 
-  const getPriorityColor = (priority) => {
-    switch(priority) {
-      case 'high': return 'priority-high';
-      case 'medium': return 'priority-medium';
-      case 'low': return 'priority-low';
-      default: return '';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'processed': return <CheckCircle className="w-4 h-4 text-green-600" />;
-      case 'processing': return <Clock className="w-4 h-4 text-blue-600" />;
-      default: return <AlertCircle className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
   const handleViewDocument = async (doc) => {
     try {
-      if (doc.s3_url) {
-        window.open(doc.s3_url, '_blank');
-        return;
-      }
-      
-      // Try to get document details from API
+      if (doc.s3_url) { window.open(doc.s3_url, '_blank'); return; }
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
       const authString = btoa(`${userData.username}:${userData.password}`);
-      
-      const response = await fetch(`http://localhost:5000/api/documents/${doc.id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/documents/${doc.id}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Basic ${authString}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${authString}` }
       });
-      
-      if (response.ok) {
-        const document = await response.json();
-        setSelectedDocument(document);
-      } else {
-        // Fallback to showing local document info
-        setSelectedDocument(doc);
-      }
+      setSelectedDocument(response.ok ? await response.json() : doc);
     } catch (error) {
       console.error('Error fetching document details:', error);
-      // Fallback
       setSelectedDocument(doc);
     }
   };
 
   const handleDownload = async (doc) => {
     try {
-      if (doc.s3_url) {
-        window.open(doc.s3_url, '_blank');
-        return;
-      }
-      
+      if (doc.s3_url) { window.open(doc.s3_url, '_blank'); return; }
       if (doc.id) {
         const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        const authString = btoa(`${userData.username}:${userData.password}`);
-        
-        const response = await fetch(`http://localhost:5000/api/documents/${doc.id}/download`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${authString}`
-          }
-        });
-        
+        const token = localStorage.getItem('userToken');
+        let headers = { 'Content-Type': 'application/json' };
+        if (token && token !== 'null' && token !== 'authenticated') {
+          headers['Authorization'] = `Bearer ${token}`;
+        } else if (userData.username && userData.password) {
+          headers['Authorization'] = `Basic ${btoa(`${userData.username}:${userData.password}`)}`;
+        }
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/documents/${doc.id}/download`, { method: 'GET', headers });
         if (response.ok) {
-          const data = await response.json();
-          if (data.download_url) {
-            window.open(data.download_url, '_blank');
-            return;
-          } else if (data.presigned_url) {
-            window.open(data.presigned_url, '_blank');
-            return;
-          }
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = doc.name || 'document';
+          document.body.appendChild(a); a.click(); a.remove();
+          window.URL.revokeObjectURL(url); return;
         }
       }
-      
       alert('Download URL not available for this document');
     } catch (error) {
       console.error('Error downloading document:', error);
@@ -298,29 +181,17 @@ const DocumentLibrary = ({ user }) => {
   };
 
   const handleDelete = async (doc) => {
-    if (!window.confirm(`Are you sure you want to delete "${doc.name}"? This action cannot be undone.`)) {
-      return;
-    }
-
+    if (!window.confirm(`Are you sure you want to delete "${doc.name}"? This action cannot be undone.`)) return;
     try {
       const token = localStorage.getItem('userToken');
       const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-      let headers = {
-        'Content-Type': 'application/json'
-      };
-
+      let headers = { 'Content-Type': 'application/json' };
       if (token && token !== 'null' && token !== 'authenticated') {
         headers['Authorization'] = `Bearer ${token}`;
       } else if (userData.username && userData.password) {
-        const authString = btoa(`${userData.username}:${userData.password}`);
-        headers['Authorization'] = `Basic ${authString}`;
+        headers['Authorization'] = `Basic ${btoa(`${userData.username}:${userData.password}`)}`;
       }
-
-      const response = await fetch(`http://localhost:5000/api/documents/${doc.id}`, {
-        method: 'DELETE',
-        headers: headers
-      });
-
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5002'}/api/documents/${doc.id}`, { method: 'DELETE', headers });
       if (response.ok) {
         setDocuments(documents.filter(d => d.id !== doc.id));
         alert('Document deleted successfully');
@@ -336,13 +207,8 @@ const DocumentLibrary = ({ user }) => {
 
   const handleShare = (doc) => {
     const shareUrl = doc.s3_url || window.location.origin + `/document/${doc.id}`;
-    
     if (navigator.share) {
-      navigator.share({
-        title: doc.name,
-        text: doc.summary,
-        url: shareUrl,
-      });
+      navigator.share({ title: doc.name, text: doc.summary, url: shareUrl });
     } else {
       navigator.clipboard.writeText(shareUrl);
       alert('Link copied to clipboard!');
@@ -351,310 +217,284 @@ const DocumentLibrary = ({ user }) => {
 
   if (loading) {
     return (
-      <div className="document-library loading">
-        <div className="loading-state">
-          <Loader className="loading-spinner" size={48} />
-          <p>Loading your documents...</p>
+      <div className="flex-1 overflow-y-auto p-8 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-on-surface-variant">
+          <div className="w-10 h-10 border-2 border-outline-variant border-t-primary rounded-full animate-spin" />
+          <p className="text-sm">Loading your documents…</p>
         </div>
       </div>
     );
   }
 
+  const filterTabs = [
+    { key: 'all', label: 'All', count: documents.length },
+    { key: 'processed', label: 'Processed', count: documents.filter(d => d.status === 'processed').length },
+    { key: 'high', label: 'High Priority', count: documents.filter(d => d.insights?.some(i => i.priority === 'high') || d.priority === 'high').length },
+  ];
+
   return (
-    <div className="document-library">
-      <div className="library-header">
+    <div className="flex-1 overflow-y-auto p-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2>Document Library</h2>
-          <p className="library-subtitle">
-            {documents.length} documents available • {filteredDocuments.length} filtered
+          <h1 className="text-h1 font-h1 text-on-surface">Document Library</h1>
+          <p className="text-body-md text-on-surface-variant mt-0.5">
+            {documents.length} documents · {filteredDocuments.length} shown
           </p>
         </div>
-        <div className="library-actions">
-          <button 
-            className="action-btn primary"
-            onClick={fetchDocuments}
-            disabled={loading}
-          >
-            {loading ? <Loader size={16} className="spin" /> : <Download size={16} />}
-            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
-        </div>
+        <button
+          onClick={fetchDocuments}
+          disabled={loading}
+          className="flex items-center gap-2 bg-primary text-on-primary px-md py-sm rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
+        >
+          <span className="material-symbols-outlined text-[18px]">refresh</span>
+          Refresh
+        </button>
       </div>
 
-      <div className="library-controls">
-        <div className="search-box">
-          <Search size={16} />
+      {/* Controls bar */}
+      <div className="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-md mb-6 space-y-3">
+        {/* Search */}
+        <div className="flex items-center gap-2 bg-surface-container-low rounded-lg px-3 py-2">
+          <span className="material-symbols-outlined text-[18px] text-on-surface-variant">search</span>
           <input
             type="text"
-            placeholder="Search documents by name, content, or tags..."
+            placeholder="Search documents by name, content, or tags…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && fetchDocuments()}
+            className="flex-1 bg-transparent text-sm text-on-surface placeholder-on-surface-variant/60 outline-none"
           />
-          <button 
-            className="search-btn"
+          <button
             onClick={fetchDocuments}
+            className="text-xs font-medium text-primary hover:underline px-1"
           >
             Search
           </button>
         </div>
-        
-        <div className="advanced-filters">
-          <div className="filter-group">
-            <label>Department:</label>
-            <div className="select-wrapper">
-              <select 
-                value={selectedDepartment} 
-                onChange={(e) => setSelectedDepartment(e.target.value)}
+
+        {/* Filters row */}
+        <div className="flex flex-wrap items-center gap-3">
+          <select
+            value={selectedDepartment}
+            onChange={(e) => setSelectedDepartment(e.target.value)}
+            className="text-sm bg-surface-container rounded-lg border border-outline-variant px-3 py-1.5 text-on-surface outline-none cursor-pointer"
+          >
+            {departments.map(dept => (
+              <option key={dept} value={dept}>
+                {dept === 'all' ? 'All Departments' : dept.charAt(0).toUpperCase() + dept.slice(1)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="text-sm bg-surface-container rounded-lg border border-outline-variant px-3 py-1.5 text-on-surface outline-none cursor-pointer"
+          >
+            {documentTypes.map(type => (
+              <option key={type} value={type}>
+                {type === 'all' ? 'All Types' : type}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="text-sm bg-surface-container rounded-lg border border-outline-variant px-3 py-1.5 text-on-surface outline-none cursor-pointer"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="name">Name (A-Z)</option>
+            <option value="size">Size (Large→Small)</option>
+          </select>
+
+          <div className="flex items-center gap-1 ml-auto">
+            {filterTabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setFilter(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  filter === tab.key
+                    ? 'bg-[#6C5DD3]/10 text-[#6C5DD3]'
+                    : 'text-on-surface-variant hover:bg-surface-container'
+                }`}
               >
-                {departments.map(dept => (
-                  <option key={dept} value={dept}>
-                    {dept === 'all' ? 'All Departments' : dept.charAt(0).toUpperCase() + dept.slice(1)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} />
-            </div>
+                {tab.label}
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                  filter === tab.key ? 'bg-[#6C5DD3]/20 text-[#6C5DD3]' : 'bg-surface-container text-on-surface-variant'
+                }`}>{tab.count}</span>
+              </button>
+            ))}
           </div>
-          
-          <div className="filter-group">
-            <label>Type:</label>
-            <div className="select-wrapper">
-              <select 
-                value={selectedType} 
-                onChange={(e) => setSelectedType(e.target.value)}
-              >
-                {documentTypes.map(type => (
-                  <option key={type} value={type}>
-                    {type === 'all' ? 'All Types' : type}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown size={14} />
-            </div>
-          </div>
-          
-          <div className="filter-group">
-            <label>Sort by:</label>
-            <div className="select-wrapper">
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="name">Name (A-Z)</option>
-                <option value="size">Size (Large to Small)</option>
-              </select>
-              <ChevronDown size={14} />
-            </div>
-          </div>
-        </div>
-        
-        <div className="filter-tabs">
-          {[
-            { key: 'all', label: 'All Documents', count: documents.length },
-            { key: 'processed', label: 'Processed', count: documents.filter(d => d.status === 'processed').length },
-            { key: 'high', label: 'High Priority', count: documents.filter(d => 
-              d.insights?.some(i => i.priority === 'high') || d.priority === 'high').length }
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              className={`filter-tab ${filter === tab.key ? 'active' : ''}`}
-              onClick={() => setFilter(tab.key)}
-            >
-              {tab.label}
-              <span className="tab-badge">{tab.count}</span>
-            </button>
-          ))}
         </div>
       </div>
 
-      <div className="documents-grid">
-        {filteredDocuments.length === 0 ? (
-          <div className="empty-state">
-            <FileText size={48} />
-            <h3>No documents found</h3>
-            <p>Try adjusting your search or filter criteria</p>
-            <button 
-              className="action-btn secondary"
-              onClick={fetchDocuments}
-            >
-              Reload Documents
-            </button>
-          </div>
-        ) : (
-          filteredDocuments.map((doc) => (
-            <div key={doc.id} className="document-card">
-              <div className="document-header">
-                <div className="document-icon">
-                  <FileText size={24} />
+      {/* Document grid */}
+      {filteredDocuments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
+          <span className="material-symbols-outlined text-[48px] mb-4 opacity-40">description</span>
+          <h3 className="text-h3 font-h3 text-on-surface mb-1">No documents found</h3>
+          <p className="text-body-md mb-4">Try adjusting your search or filter criteria</p>
+          <button
+            onClick={fetchDocuments}
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            Reload Documents
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-lg">
+          {filteredDocuments.map((doc) => (
+            <div key={doc.id} className="bg-surface-container-lowest rounded-xl border border-outline-variant p-lg flex flex-col hover:shadow-md transition-shadow group">
+              {/* Card top */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-[20px] text-on-surface-variant">description</span>
                 </div>
-                <div className="document-title">
-                  <h3>{doc.name}</h3>
-                  <div className="document-meta">
-                    <span className="doc-type">{doc.type}</span>
-                    <span className="doc-size">{doc.size}</span>
-                    <span className="doc-department">{doc.department}</span>
-                    <span className="doc-status">
-                      {getStatusIcon(doc.status)}
-                      {doc.status === 'processed' ? 'AI Analyzed' : 'Processing'}
-                    </span>
-                  </div>
-                </div>
-                <div className="document-actions">
-                  <button 
-                    className="icon-btn" 
-                    title="View Details"
-                    onClick={() => handleViewDocument(doc)}
-                  >
-                    <Eye size={18} />
-                  </button>
-                  <button 
-                    className="icon-btn" 
-                    title="Download"
-                    onClick={() => handleDownload(doc)}
-                  >
-                    <Download size={18} />
-                  </button>
-                  <button 
-                    className="icon-btn" 
-                    title="Share"
-                    onClick={() => handleShare(doc)}
-                  >
-                    <Share2 size={18} />
-                  </button>
-                  {user?.role === 'admin' && (
-                    <button 
-                      className="icon-btn delete-btn" 
-                      title="Delete"
-                      onClick={() => handleDelete(doc)}
-                      style={{ color: '#ef4444' }}
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                  doc.status === 'processed'
+                    ? 'bg-primary-fixed text-on-primary-fixed-variant'
+                    : 'bg-surface-variant text-on-surface-variant'
+                }`}>
+                  <span className="material-symbols-outlined text-[12px]" style={doc.status === 'processed' ? { fontVariationSettings: "'FILL' 1" } : {}}>
+                    {doc.status === 'processed' ? 'check_circle' : 'pending'}
+                  </span>
+                  {doc.status === 'processed' ? 'AI Analyzed' : 'Processing'}
+                </span>
+              </div>
+
+              {/* Title + meta */}
+              <h3 className="text-h3 font-h3 text-on-surface truncate mb-1" title={doc.name}>{doc.name}</h3>
+              <div className="flex items-center gap-3 text-[11px] text-on-surface-variant mb-3">
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+                  {new Date(doc.uploadedAt).toLocaleDateString()}
+                </span>
+                {doc.department && (
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">business</span>
+                    {doc.department}
+                  </span>
+                )}
+              </div>
+
+              {/* Summary */}
+              <p className="text-body-sm text-on-surface-variant line-clamp-2 mb-3 flex-1">
+                {doc.summary}
+              </p>
+
+              {/* Key points */}
+              {doc.insights && doc.insights.length > 0 && (
+                <div className="bg-surface p-md rounded-lg border border-outline-variant/50 mb-3 space-y-1">
+                  {doc.insights.slice(0, 3).map((insight, idx) => (
+                    <div key={idx} className="flex items-start gap-1.5 text-[12px] text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[14px] text-primary flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      <span className="line-clamp-1">{insight.text}</span>
+                    </div>
+                  ))}
+                  {doc.insights.length > 3 && (
+                    <p className="text-[11px] text-on-surface-variant pl-5">+{doc.insights.length - 3} more</p>
                   )}
                 </div>
-              </div>
-
-              <div className="document-summary">
-                <p>{doc.summary}</p>
-              </div>
-
-              {doc.insights && doc.insights.length > 0 && (
-                <div className="document-insights">
-                  <h4>Key Points:</h4>
-                  <div className="insights-list">
-                    {doc.insights.slice(0, 3).map((insight, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`insight-item ${getPriorityColor(insight.priority)}`}
-                      >
-                        <AlertCircle size={14} />
-                        <span>{insight.text}</span>
-                      </div>
-                    ))}
-                    {doc.insights.length > 3 && (
-                      <div className="insight-more">
-                        +{doc.insights.length - 3} more insights
-                      </div>
-                    )}
-                  </div>
-                </div>
               )}
 
-              <div className="document-footer">
-                {doc.tags && doc.tags.length > 0 && (
-                  <div className="doc-tags">
-                    {doc.tags.slice(0, 3).map((tag, idx) => (
-                      <span key={idx} className="tag">
-                        <Tag size={12} />
-                        {tag}
-                      </span>
-                    ))}
-                    {doc.tags.length > 3 && (
-                      <span className="tag-more">+{doc.tags.length - 3}</span>
-                    )}
-                  </div>
+              {/* Actions */}
+              <div className="flex items-center gap-1 pt-2 border-t border-outline-variant/50 opacity-60 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => handleViewDocument(doc)}
+                  title="View Details"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs text-on-surface-variant hover:bg-surface-container transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">visibility</span>
+                  View
+                </button>
+                <button
+                  onClick={() => handleDownload(doc)}
+                  title="Download"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs text-on-surface-variant hover:bg-surface-container transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  Download
+                </button>
+                <button
+                  onClick={() => handleShare(doc)}
+                  title="Share"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs text-on-surface-variant hover:bg-surface-container transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">share</span>
+                  Share
+                </button>
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={() => handleDelete(doc)}
+                    title="Delete"
+                    className="flex items-center justify-center p-1.5 rounded-lg text-xs text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
                 )}
-                <div className="doc-info">
-                  <span className="upload-info">
-                    <User size={12} />
-                    {doc.uploadedBy}
-                  </span>
-                  <span className="upload-date">
-                    <Calendar size={12} />
-                    {new Date(doc.uploadedAt).toLocaleDateString()}
-                  </span>
-                </div>
               </div>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
+      {/* Detail modal */}
       {selectedDocument && (
-        <div className="modal-overlay" onClick={() => setSelectedDocument(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{selectedDocument.title || selectedDocument.name || selectedDocument.filename || 'Document Details'}</h3>
-              <button className="icon-btn" onClick={() => setSelectedDocument(null)}>
-                <X size={20} />
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedDocument(null)}
+        >
+          <div
+            className="bg-surface-container-lowest rounded-2xl border border-outline-variant shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-lg border-b border-outline-variant">
+              <h3 className="text-h3 font-h3 text-on-surface truncate pr-4">
+                {selectedDocument.title || selectedDocument.name || selectedDocument.filename || 'Document Details'}
+              </h3>
+              <button
+                onClick={() => setSelectedDocument(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors flex-shrink-0"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <div className="modal-body">
-              <div className="detail-row">
-                <span className="detail-label">Description:</span>
-                <span className="detail-value">{selectedDocument.description || selectedDocument.summary || 'No description available'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Department:</span>
-                <span className="detail-value">{selectedDocument.department}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Category:</span>
-                <span className="detail-value">{selectedDocument.category || selectedDocument.type || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">File Type:</span>
-                <span className="detail-value">{selectedDocument.file_type || selectedDocument.type || 'Unknown'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Size:</span>
-                <span className="detail-value">
-                  {selectedDocument.file_size 
-                    ? `${(selectedDocument.file_size / 1024 / 1024).toFixed(2)} MB` 
-                    : selectedDocument.size || 'Unknown'}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Uploaded:</span>
-                <span className="detail-value">
-                  {new Date(selectedDocument.created_at || selectedDocument.uploadedAt || new Date()).toLocaleDateString()}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Uploaded By:</span>
-                <span className="detail-value">{selectedDocument.uploader_name || selectedDocument.uploadedBy || 'System'}</span>
-              </div>
-              
+            <div className="p-lg space-y-4">
+              {[
+                ['Description', selectedDocument.description || selectedDocument.summary || 'No description available'],
+                ['Department', selectedDocument.department],
+                ['Category', selectedDocument.category || selectedDocument.type || 'N/A'],
+                ['File Type', selectedDocument.file_type || selectedDocument.type || 'Unknown'],
+                ['Size', selectedDocument.file_size ? `${(selectedDocument.file_size / 1024 / 1024).toFixed(2)} MB` : selectedDocument.size || 'Unknown'],
+                ['Uploaded', new Date(selectedDocument.created_at || selectedDocument.uploadedAt || new Date()).toLocaleDateString()],
+                ['Uploaded By', selectedDocument.uploader_name || selectedDocument.uploadedBy || 'System'],
+              ].map(([label, value]) => value && (
+                <div key={label}>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-on-surface-variant mb-1">{label}</p>
+                  <p className="text-body-md text-on-surface">{value}</p>
+                </div>
+              ))}
               {selectedDocument.tags && (
-                <div className="detail-row">
-                  <span className="detail-label">Tags:</span>
-                  <span className="detail-value">
-                    {Array.isArray(selectedDocument.tags) 
-                      ? selectedDocument.tags.join(', ') 
-                      : selectedDocument.tags}
-                  </span>
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-on-surface-variant mb-1">Tags</p>
+                  <p className="text-body-md text-on-surface">
+                    {Array.isArray(selectedDocument.tags) ? selectedDocument.tags.join(', ') : selectedDocument.tags}
+                  </p>
                 </div>
               )}
-
               {selectedDocument.s3_url && (
-                <div className="detail-row" style={{ marginTop: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
-                  <a href={selectedDocument.s3_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>
-                    Open Original File
-                  </a>
-                </div>
+                <a
+                  href={selectedDocument.s3_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 text-sm text-primary hover:underline font-medium pt-2 border-t border-outline-variant"
+                >
+                  <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                  Open Original File
+                </a>
               )}
             </div>
           </div>

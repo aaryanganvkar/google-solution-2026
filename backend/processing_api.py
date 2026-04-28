@@ -286,35 +286,6 @@ def get_department_documents(department):
             }
             all_documents.append(doc_obj)
         
-        # Also fetch unprocessed S3 documents for this department
-        s3_docs = list_s3_documents(department)
-        
-        # Add S3 documents that aren't in database yet
-        s3_filenames = [d['original_filename'] for d in all_documents]
-        for s3_doc in s3_docs:
-            filename = os.path.basename(s3_doc['key'])
-            if filename not in s3_filenames:
-                # Extract department from S3 key path
-                dept_from_key = s3_doc.get('department', department)
-                
-                all_documents.append({
-                    'id': None,  # No database ID yet
-                    'original_filename': filename,
-                    'document_type': s3_doc.get('document_type', 'unknown'),
-                    'department': dept_from_key,
-                    'summary': 'Document is in S3 but not yet fully processed. Please run processing.',
-                    'key_points': [],
-                    'action_items': [],
-                    'priority': 'medium',
-                    'processed_date': s3_doc.get('last_modified'),
-                    'status': 'pending_processing',
-                    'source': 's3',
-                    's3_url': s3_doc.get('url'),
-                    's3_key': s3_doc.get('key'),
-                    'file_size': f"{s3_doc.get('size', 0) / 1024 / 1024:.2f} MB",
-                    'uploaded_by': 'System (S3)'
-                })
-        
         return jsonify(all_documents)
         
     except Exception as e:
@@ -364,11 +335,8 @@ def get_documents_summary():
         # Get database documents
         db_documents = ProcessedDocument.query.all()
         
-        # Get S3 documents
-        s3_documents = list_s3_documents()
-        
         # Calculate statistics
-        total_documents = len(db_documents) + len(s3_documents)
+        total_documents = len(db_documents)
         
         # Department distribution from database
         departments_db = {}
@@ -377,20 +345,8 @@ def get_documents_summary():
                 departments_db[doc.department] = 0
             departments_db[doc.department] += 1
         
-        # Department distribution from S3
-        departments_s3 = {}
-        for doc in s3_documents:
-            dept = doc.get('department', 'unknown')
-            if dept not in departments_s3:
-                departments_s3[dept] = 0
-            departments_s3[dept] += 1
-        
-        # Combine departments
-        all_departments = set(list(departments_db.keys()) + list(departments_s3.keys()))
-        department_distribution = {
-            dept: departments_db.get(dept, 0) + departments_s3.get(dept, 0)
-            for dept in all_departments
-        }
+        all_departments = set(list(departments_db.keys()))
+        department_distribution = departments_db
         
         # Recent activity
         recent_docs = ProcessedDocument.query.order_by(
@@ -411,7 +367,6 @@ def get_documents_summary():
         return jsonify({
             'total_documents': total_documents,
             'database_documents': len(db_documents),
-            's3_documents': len(s3_documents),
             'departments': list(all_departments),
             'by_department': department_distribution,
             'recent_activity': recent_activity
@@ -451,14 +406,22 @@ def download_document(doc_id):
         if user.role != 'admin' and user.department != document.department:
             return jsonify({'error': 'Access denied'}), 403
         
-        # Check if file is in S3
-        if document.file_path and document.file_path.startswith('http'):
+        # Check if file is in DB
+        if document.file_data:
+            from flask import send_file
+            import io
+            return send_file(
+                io.BytesIO(document.file_data),
+                as_attachment=True,
+                download_name=document.original_filename
+            )
+        elif document.file_path and document.file_path.startswith('http'):
             # File is in S3, return the URL
             return jsonify({
                 'download_url': document.file_path,
                 'filename': document.original_filename
             })
-        elif os.path.exists(document.file_path):
+        elif document.file_path and os.path.exists(document.file_path):
             # File is local, return file path
             from flask import send_file
             return send_file(document.file_path, as_attachment=True, download_name=document.original_filename)
@@ -468,31 +431,10 @@ def download_document(doc_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@processing_bp.route('/get-s3-url/<s3_key>', methods=['GET'])
+@processing_bp.route('/get-s3-url/<path:s3_key>', methods=['GET'])
 @auth_required_api()
 def get_s3_url(s3_key):
-    try:
-        user = request.user
-        
-        from model import s3_client, AWS_S3_BUCKET, AWS_REGION
-        
-        # Generate presigned URL (expires in 1 hour)
-        presigned_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': AWS_S3_BUCKET,
-                'Key': s3_key
-            },
-            ExpiresIn=3600
-        )
-        
-        return jsonify({
-            'presigned_url': presigned_url,
-            'filename': os.path.basename(s3_key)
-        })
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    return jsonify({'error': 'S3 functionality is disabled'}), 400
 
 @processing_bp.route('/test-connection', methods=['GET'])
 def test_connection():

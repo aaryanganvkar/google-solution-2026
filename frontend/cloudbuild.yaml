@@ -1,0 +1,11 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/docuintel-frontend'
+      - '--build-arg'
+      - 'REACT_APP_API_URL=$_REACT_APP_API_URL'
+      - '.'
+images:
+  - 'gcr.io/$PROJECT_ID/docuintel-frontend'

@@ -9,8 +9,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #fafbfc;
-  color: #1a202c;
+  background-color: #fcf8ff;
+  color: #1c1b22;
   line-height: 1.6;
 }
 
@@ -25,25 +25,26 @@ body {
   left: 0;
   top: 0;
   height: 100vh;
-  width: 260px;
+  width: 240px;
   z-index: 100;
-  overflow-y: auto;
 }
 
 .main-container {
   flex: 1;
-  margin-left: 260px; /* Match sidebar width */
+  margin-left: 240px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  width: calc(100% - 260px); /* Prevent overflow */
+  height: 100vh;
+  overflow: hidden;
 }
 
 .main-content-area {
   flex: 1;
-  padding: 2rem;
-  background-color: #fafbfc;
-  min-height: 100vh;
+  padding: 0;
+  background-color: #fcf8ff;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Content Grid Layout */

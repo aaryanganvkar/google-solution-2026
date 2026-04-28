@@ -9,13 +9,13 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
     
-    # Configure CORS - Allow all origins for simplicity
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # Configure CORS
+    CORS(app, supports_credentials=True, resources={r"/*": {"origins": "*"}})
     
     # App configuration
     app.config.update(
         SECRET_KEY=os.getenv('SECRET_KEY', 'infradoc-ai-secret-key-2024'),
-        SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL', 'sqlite:///infradoc.db'),
+        SQLALCHEMY_DATABASE_URI=os.getenv('DATABASE_URL', 'sqlite:///infradoc.db').replace("postgres://", "postgresql://", 1),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         
         # File upload settings
@@ -52,4 +52,4 @@ def create_app():
 app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(debug=True, port=5002, host='0.0.0.0')

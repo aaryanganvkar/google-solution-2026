@@ -1,76 +1,79 @@
-// components/admin/AdminSidebar.jsx
 import React from 'react';
-import { Upload, Users, BarChart, Settings, Home, Database, LogOut, Shield } from 'lucide-react';
-import './AdminSidebar.css';
 
 const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Dashboard' },
-    { id: 'upload', icon: Upload, label: 'Upload Documents' },
-    { id: 'users', icon: Users, label: 'User Management' },
-    { id: 'analytics', icon: BarChart, label: 'Analytics' },
-    { id: 'database', icon: Database, label: 'Document Database' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+    { id: 'upload', icon: 'upload_file', label: 'Upload Documents' },
+    { id: 'database', icon: 'database', label: 'Document Database' },
+    { id: 'users', icon: 'group', label: 'User Management' },
+    { id: 'analytics', icon: 'monitoring', label: 'Analytics' },
+    { id: 'settings', icon: 'settings', label: 'Settings' },
   ];
 
   const handleLogout = () => {
-    // Call the parent logout function if provided
     if (onLogout) {
       onLogout();
     } else {
-      // Fallback: clear all storage and redirect
       localStorage.clear();
       sessionStorage.clear();
-      window.location.href = '/login'; // Force full page reload to clear React state
+      window.location.href = '/login';
     }
   };
 
   return (
-    <div className="admin-sidebar">
-      <div className="admin-sidebar-logo">
-        <div className="admin-badge">
-          <Shield size={24} />
+    <aside className="fixed left-0 top-0 h-full w-[240px] border-r border-slate-200 bg-slate-50 flex flex-col p-4 z-50">
+      {/* Logo */}
+      <div className="mb-8 px-2 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center flex-shrink-0">
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
         </div>
         <div>
-          <h2>InfraDoc Admin</h2>
-          <p>Administrator Panel</p>
+          <h1 className="text-base font-bold tracking-tight text-slate-900 leading-tight">DocIntel AI</h1>
+          <p className="text-slate-500 text-xs">Admin Panel</p>
         </div>
       </div>
 
-      <div className="admin-sidebar-section">
-        <h3 className="admin-section-title">NAVIGATION</h3>
-        <ul className="admin-sidebar-nav">
-          {menuItems.map((item) => (
-            <li
-              key={item.id}
-              className={`admin-nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+      {/* Nav */}
+      <nav className="flex-1 space-y-1">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 active:scale-[0.98] text-sm ${
+              activeTab === item.id
+                ? 'bg-[#6C5DD3]/10 text-[#6C5DD3] font-semibold'
+                : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            <span
+              className="material-symbols-outlined text-[20px]"
+              style={activeTab === item.id ? { fontVariationSettings: "'FILL' 1" } : {}}
             >
-              <span className="admin-nav-icon">
-                <item.icon size={20} />
-              </span>
-              <span className="admin-nav-label">{item.label}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+              {item.icon}
+            </span>
+            {item.label}
+          </button>
+        ))}
+      </nav>
 
-      <div className="admin-sidebar-footer">
-        <div className="admin-profile">
-          <div className="admin-avatar">
-            <span>A</span>
-          </div>
-          <div className="admin-info">
-            <span className="admin-name">Administrator</span>
-            <span className="admin-role">Super Admin</span>
-          </div>
+      {/* Footer */}
+      <div className="mt-auto pt-4 border-t border-slate-200 flex items-center gap-3 px-2">
+        <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-xs font-semibold flex-shrink-0">
+          AD
         </div>
-        <button className="admin-logout-btn" onClick={handleLogout}>
-          <LogOut size={16} />
-          <span>Logout</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-on-surface truncate">Administrator</p>
+          <p className="text-xs text-on-surface-variant truncate">Super Admin</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="text-slate-400 hover:text-error transition-colors flex-shrink-0"
+          title="Logout"
+        >
+          <span className="material-symbols-outlined text-[20px]">logout</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 };
 

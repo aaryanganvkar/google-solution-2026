@@ -367,47 +367,11 @@ def upload_document_s3():
         file_size    = len(file_content)
         file.seek(0)
 
-        # ── Try S3 first; fall back to local storage ─────────────────────────
-        s3_url     = None
-        s3_key     = None
+        # ── Store file in Database ───────────────────────────────────────────
+        file_path = None
+        s3_url = None
+        s3_key = None
         local_path = None
-
-        s3_configured = bool(AWS_S3_BUCKET and os.getenv('AWS_ACCESS_KEY_ID'))
-
-        if s3_configured:
-            try:
-                unique_key = f"uploads/{department}/{uuid.uuid4().hex}_{filename}"
-                import io
-                s3_client  = get_s3_client()
-                file_obj = io.BytesIO(file_content)
-                s3_client.upload_fileobj(
-                    file_obj, AWS_S3_BUCKET, unique_key,
-                    ExtraArgs={
-                        'ContentType': file.content_type or 'application/octet-stream',
-                        'Metadata': {
-                            'uploaded-by': user.username,
-                            'department':  department,
-                            'category':    category,
-                        }
-                    }
-                )
-                s3_url = f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{unique_key}"
-                s3_key = unique_key
-                file_path = s3_url
-                print(f"✅ Uploaded to S3: {unique_key}")
-            except Exception as s3_err:
-                print(f"⚠️  S3 upload failed ({s3_err}), falling back to local storage")
-                s3_configured = False  # fall through to local
-
-        if not s3_configured:
-            upload_dir = os.path.join(os.path.dirname(__file__), UPLOAD_FOLDER)
-            os.makedirs(upload_dir, exist_ok=True)
-            unique_filename = f"{uuid.uuid4().hex}_{filename}"
-            local_path = os.path.join(upload_dir, unique_filename)
-            file.seek(0)
-            file.save(local_path)
-            file_path = local_path
-            print(f"✅ Saved locally: {local_path}")
 
         # ── Run LLM processing pipeline ──────────────────────────────────────
         processed_doc = None
@@ -419,17 +383,14 @@ def upload_document_s3():
             )
             import json as _json
 
-            source_path = local_path or file_path
-            # For S3 files we need a local copy; download if needed
-            if s3_url and not local_path:
-                import tempfile
-                tmp = tempfile.NamedTemporaryFile(
-                    delete=False,
-                    suffix=os.path.splitext(filename)[1]
-                )
-                tmp.write(file_content)
-                tmp.close()
-                source_path = tmp.name
+            import tempfile
+            tmp = tempfile.NamedTemporaryFile(
+                delete=False,
+                suffix=os.path.splitext(filename)[1]
+            )
+            tmp.write(file_content)
+            tmp.close()
+            source_path = tmp.name
 
             raw_text    = extract_text_from_file(source_path)
             doc_type    = classify_document(raw_text)
@@ -443,13 +404,13 @@ def upload_document_s3():
             deadline     = extract_deadline(raw_text)
             priority     = determine_priority(raw_text)
 
-            if s3_url and not local_path:
-                os.unlink(source_path)
+            os.unlink(source_path)
 
             processed_doc = ProcessedDocument(
                 original_filename=filename,
                 processed_filename=f"processed_{filename}",
-                file_path=file_path,
+                file_path=None,
+                file_data=file_content,
                 document_type=doc_type.value,
                 department=department,
                 summary=summary,
@@ -459,8 +420,6 @@ def upload_document_s3():
                 priority=priority,
                 doc_metadata=_json.dumps({
                     'file_size': f"{file_size/1024:.1f} KB",
-                    's3_url': s3_url,
-                    's3_key': s3_key,
                     'uploaded_by': user.username,
                 }),
                 processed_by=user.id,
@@ -481,7 +440,8 @@ def upload_document_s3():
             title=title or filename.rsplit('.', 1)[0].replace('_', ' ').title(),
             description=description or (processed_doc.summary[:300] if processed_doc else ''),
             filename=filename,
-            file_path=file_path,
+            file_path=None,
+            file_data=file_content,
             file_size=file_size,
             file_type=filename.rsplit('.', 1)[1].lower() if '.' in filename else 'unknown',
             department=department,
@@ -503,9 +463,7 @@ def upload_document_s3():
                 'priority': processed_doc.priority if processed_doc else 'medium',
                 'summary': processed_doc.summary[:200] if processed_doc else '',
             },
-            's3_url': s3_url,
-            's3_key': s3_key,
-            'storage': 'S3' if s3_url else 'local',
+            'storage': 'database',
         }), 201
 
     except Exception as e:
@@ -583,8 +541,18 @@ def download_document(doc_id):
         if user.role != 'admin' and user.department != document.department:
             return jsonify({'error': 'Access denied'}), 403
         
-        # Check if file is in S3 or local
-        if document.file_path.startswith('https://'):
+        # Check if file is stored as BLOB
+        if document.file_data:
+            from flask import send_file
+            import io
+            document.downloads += 1
+            db.session.commit()
+            return send_file(
+                io.BytesIO(document.file_data),
+                as_attachment=True,
+                download_name=document.filename
+            )
+        elif document.file_path and document.file_path.startswith('https://'):
             # File is in S3 - generate presigned URL
             s3_key = document.file_path.split(f'https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/')[-1]
             s3_client = get_s3_client()
@@ -605,12 +573,14 @@ def download_document(doc_id):
                 'download_url': presigned_url,
                 'filename': document.filename
             })
-        else:
-            # File is local
+        elif document.file_path:
+            # Fallback for old local files
             from flask import send_file
             document.downloads += 1
             db.session.commit()
             return send_file(document.file_path, as_attachment=True, download_name=document.filename)
+        else:
+            return jsonify({'error': 'File data not found'}), 404
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -636,8 +606,15 @@ def delete_document(doc_id):
         if processed_doc:
             db.session.delete(processed_doc)
             
-        # 2. Try to delete actual file (S3 or local)
-        if file_path.startswith('https://'):
+        # 2. Try to delete actual file (if stored locally previously)
+        if file_path and not file_path.startswith('https://'):
+            try:
+                import os
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Failed to delete local file: {e}")
+        elif file_path and file_path.startswith('https://'):
             # S3
             try:
                 s3_key = file_path.split(f'https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/')[-1]
@@ -646,13 +623,6 @@ def delete_document(doc_id):
                     s3_client.delete_object(Bucket=AWS_S3_BUCKET, Key=s3_key)
             except Exception as e:
                 print(f"Failed to delete from S3: {e}")
-        else:
-            # Local
-            try:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except Exception as e:
-                print(f"Failed to delete local file: {e}")
 
         # 3. Delete from DB
         db.session.delete(document)
@@ -676,26 +646,9 @@ def get_presigned_url(doc_id):
         if user.role != 'admin' and user.department != document.department:
             return jsonify({'error': 'Access denied'}), 403
         
-        # Check if file is in S3
-        if not document.file_path.startswith('https://'):
-            return jsonify({'error': 'File is not stored in S3'}), 400
-        
-        # Extract filename from S3 URL
-        s3_key = document.file_path.split(f'https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/')[-1]
-        
-        # Generate presigned URL
-        s3_client = get_s3_client()
-        presigned_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': AWS_S3_BUCKET,
-                'Key': s3_key
-            },
-            ExpiresIn=3600  # URL expires in 1 hour
-        )
-        
+        # Return local download URL since we removed S3
         return jsonify({
-            'presigned_url': presigned_url,
+            'presigned_url': f'/api/documents/{doc_id}/download',
             'filename': document.filename
         })
         
